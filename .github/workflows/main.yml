@@ -2,7 +2,9 @@ name: Send emails daily
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 22 * * *'
+    # 美东周一至周五 00:30，RSS 正常更新后半小时
+    - cron: '30 0 * * 1-5'
+      timezone: 'America/New_York'
 
 jobs:
   calculate-and-send:
