@@ -1,6 +1,15 @@
+# Modified 2026-10-30: persist paper vectors between runs; AGPL-3.0.
 name: Test
-on:
+'on':
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Use the same group and cache prefix as main.yml.
+concurrency:
+  group: zotero-arxiv-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   calculate-and-send:
@@ -8,16 +17,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      #  with:
-      #    repository: ${{ vars.REPOSITORY }}
-      #    ref: ${{ vars.REF }}
+
+      - name: Restore paper embedding vectors
+        id: embedding_cache_restore
+        uses: actions/cache/restore@v5
+        continue-on-error: true
+        with:
+          path: .cache/paper-embeddings/vectors.sqlite3
+          key: paper-embeddings-v1-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            paper-embeddings-v1-${{ runner.os }}-
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v7.1.4
 
-
       - name: Run script
         env:
+          DEBUG: 'true'
           ZOTERO_ID: ${{ secrets.ZOTERO_ID }}
           ZOTERO_KEY: ${{ secrets.ZOTERO_KEY }}
           SENDER: ${{ secrets.SENDER }}
@@ -27,8 +43,13 @@ jobs:
           OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
           CUSTOM_CONFIG: ${{ vars.CUSTOM_CONFIG }}
         run: |
-          export DEBUG=true
-          printf "%b\n" "$CUSTOM_CONFIG" > config/custom.yaml
-          echo "Use custom config: "
-          cat config/custom.yaml
+          printf '%b\n' "$CUSTOM_CONFIG" > config/custom.yaml
           uv run src/zotero_arxiv_daily/main.py
+
+      - name: Save updated paper embedding vectors
+        if: ${{ always() && hashFiles('.cache/paper-embeddings/.updated') != '' && hashFiles('.cache/paper-embeddings/vectors.sqlite3') != '' }}
+        uses: actions/cache/save@v5
+        continue-on-error: true
+        with:
+          path: .cache/paper-embeddings/vectors.sqlite3
+          key: paper-embeddings-v1-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
