@@ -1,11 +1,10 @@
 # Modified 2026-10-30: persist paper vectors between runs; AGPL-3.0.
 name: Send emails daily
-'on':
+on:
   workflow_dispatch:
   schedule:
-    # 00:30 US Eastern on weekdays, following daylight saving time.
-    - cron: '30 0 * * 1-5'
-      timezone: America/New_York
+    # UTC 05:30 = 北京时间 13:30，周一至周五
+    - cron: '30 5 * * 1-5'
 
 permissions:
   contents: read
