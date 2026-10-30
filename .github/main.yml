@@ -1,13 +1,16 @@
-# Modified 2026-10-30: persistent paper vectors; AGPL-3.0.
+# Modified 2026-10-30: persist paper vectors between runs; AGPL-3.0.
 name: Send emails daily
 'on':
   workflow_dispatch:
   schedule:
-    # 00:30 US Eastern, Monday-Friday; follows daylight saving time.
+    # 00:30 US Eastern on weekdays, following daylight saving time.
     - cron: '30 0 * * 1-5'
-      timezone: 'America/New_York'
+      timezone: America/New_York
 
-# Serialize Test and daily runs on the same branch to share the latest vectors.
+permissions:
+  contents: read
+
+# Test and daily runs on the same branch share the latest saved vectors.
 concurrency:
   group: zotero-arxiv-${{ github.ref }}
   cancel-in-progress: false
@@ -16,11 +19,9 @@ jobs:
   calculate-and-send:
     runs-on: ubuntu-latest
     steps:
+      # Check out this fork, including its modified vector-cache code.
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          repository: ${{ vars.REPOSITORY }}
-          ref: ${{ vars.REF }}
 
       - name: Restore paper embedding vectors
         id: embedding_cache_restore
@@ -46,9 +47,7 @@ jobs:
           OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
           CUSTOM_CONFIG: ${{ vars.CUSTOM_CONFIG }}
         run: |
-          printf "%b\n" "$CUSTOM_CONFIG" > config/custom.yaml
-          echo "Use custom config: "
-          cat config/custom.yaml
+          printf '%b\n' "$CUSTOM_CONFIG" > config/custom.yaml
           uv run src/zotero_arxiv_daily/main.py
 
       - name: Save updated paper embedding vectors
@@ -57,4 +56,4 @@ jobs:
         continue-on-error: true
         with:
           path: .cache/paper-embeddings/vectors.sqlite3
-          key: ${{ steps.embedding_cache_restore.outputs.cache-primary-key }}
+          key: paper-embeddings-v1-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
