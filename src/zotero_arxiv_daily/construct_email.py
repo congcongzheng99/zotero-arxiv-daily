@@ -1,5 +1,8 @@
+# Modified 2026-10-30: render plain-text reading notes as escaped HTML paragraphs.
+# Upstream: https://github.com/TideDra/zotero-arxiv-daily (AGPL-3.0).
 from .protocol import Paper
 import math
+from html import escape
 
 
 framework = """
@@ -74,7 +77,7 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
     </tr>
     <tr>
         <td style="font-size: 14px; color: #333; padding: 8px 0;">
-            <strong>TLDR:</strong> {tldr}
+            <strong>论文简读 / Paper reading:</strong><br>{tldr}
         </td>
     </tr>
 
@@ -85,7 +88,8 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
     </tr>
 </table>
 """
-    return block_template.format(title=title, authors=authors,rate=rate, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations)
+    reading_html = escape(tldr or '').replace('\r\n', '\n').replace('\r', '\n').replace('\n', '<br>')
+    return block_template.format(title=title, authors=authors,rate=rate, tldr=reading_html, pdf_url=pdf_url, affiliations=affiliations)
 
 def get_stars(score:float):
     full_star = '<span class="full-star">⭐</span>'
