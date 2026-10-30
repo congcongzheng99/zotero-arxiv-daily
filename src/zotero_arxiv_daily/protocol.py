@@ -77,6 +77,8 @@ class Paper:
     tldr: Optional[str] = None
     affiliations: Optional[list[str]] = None
     score: Optional[float] = None
+    # Presentation metadata is separate from the legacy tldr return value.
+    reading_notice: Optional[str] = None
 
     def _generate_tldr_with_llm(self, openai_client:OpenAI,llm_params:dict) -> str:
         lang = llm_params.get('language', 'English')
@@ -84,7 +86,8 @@ class Paper:
         body = (self.full_text or '').strip()
         if not body and not abstract:
             logger.warning(f"Neither full text nor abstract is provided for {self.url}")
-            return "解读未生成：未获取到摘要或正文。 / No abstract or body text available."
+            self.reading_notice = "解读未生成：未获取到摘要或正文。 / No abstract or body text available."
+            return "Failed to generate TLDR. Neither full text nor abstract is provided"
 
         # Approximate the material budget with the tokenizer already used upstream.
         enc = tiktoken.encoding_for_model("gpt-4o")
@@ -143,9 +146,11 @@ class Paper:
             scope_label = 'Material: abstract and body excerpts' if body and abstract else (
                 'Material: body excerpts; abstract unavailable' if body else 'Material: abstract only'
             )
-        return scope_label + '\n\n' + tldr.strip()
+        self.reading_notice = scope_label
+        return tldr
     
     def generate_tldr(self, openai_client:OpenAI,llm_params:dict) -> str:
+        self.reading_notice = None
         try:
             tldr = self._generate_tldr_with_llm(openai_client,llm_params)
             self.tldr = tldr
@@ -154,9 +159,10 @@ class Paper:
             logger.warning(f"Failed to generate tldr of {self.url}: {e}")
             lang = str(llm_params.get('language', 'English')).lower()
             if lang in {'chinese', 'zh', 'zh-cn', 'zh-hans', '中文', '简体中文'}:
-                tldr = '解读生成失败，以下为原文摘要：\n' + (self.abstract or '摘要不可用。')
+                self.reading_notice = '解读生成失败，以下为原文摘要：'
             else:
-                tldr = 'Reading note unavailable; original abstract follows:\n' + (self.abstract or 'No abstract available.')
+                self.reading_notice = 'Reading note unavailable; original abstract follows:'
+            tldr = self.abstract
             self.tldr = tldr
             return tldr
 
