@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
   schedule:
     # UTC 05:30 = 北京时间 13:30，周一至周五
-    - cron: '30 5 * * 1-5'
-
+    - cron: '30 0 * * 1-5'
+      timezone: 'America/New_York'
+      
 permissions:
   contents: read
 
