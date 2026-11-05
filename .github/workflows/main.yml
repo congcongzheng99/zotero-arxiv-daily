@@ -3,7 +3,7 @@ name: Send emails daily
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 12 * * 1-5'
+    - cron: '30 15 * * 1-5'
       timezone: 'America/New_York'
       
 permissions:
